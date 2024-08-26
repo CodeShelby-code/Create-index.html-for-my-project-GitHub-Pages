@@ -3,30 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
+    <title>Stripe Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
     <style>
+        /* Add some basic styling */
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding-top: 50px;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
             padding: 20px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #card-element {
+            margin: 20px 0;
+        }
+        #error-message {
+            color: red;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to My Website</h1>
-        <p>This is a simple webpage.</p>
-    </div>
+    <h1>Stripe Payment</h1>
+    <form id="payment-form">
+        <div id="card-element">
+            <!-- A Stripe Element will be inserted here. -->
+        </div>
+        <!-- Used to display form errors. -->
+        <div id="error-message"></div>
+        <button type="submit">Submit Payment</button>
+    </form>
+
+    <script>
+        // Create a Stripe client
+        var stripe = Stripe('pk_live_51PrM5A06u6CqjvK6pqSCpllsfu1LpMJXY28E5YSMcxO3sYyNEWyjf65YhNDNOZzBucfKZmicDZSejLtAEdMaIv0800GKjkKGgY'); // Your live publishable key
+
+        // Create an instance of Elements
+        var elements = stripe.elements();
+
+        // Create a card element
+        var card = elements.create('card');
+
+        // Add an instance of the card Element into the `card-element` div
+        card.mount('#card-element');
+
+        // Handle real-time validation errors from the card Element
+        card.addEventListener('change', function(event) {
+            var displayError = document.getElementById('error-message');
+            if (event.error) {
+                displayError.textContent = event.error.message;
+            } else {
+                displayError.textContent = '';
+            }
+        });
+
+        // Handle form submission
+        var form = document.getElementById('payment-form');
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            stripe.createToken(card).then(function(result) {
+                if (result.error) {
+                    // Inform the user if there was an error
+                    var errorElement = document.getElementById('error-message');
+                    errorElement.textContent = result.error.message;
+                } else {
+                    // Send the token to your server
+                    fetch('/charge', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ token: result.token.id })
+                    }).then(function(response) {
+                        return response.json();
+                    }).then(function(data) {
+                        if (data.status === 'success') {
+                            alert('Payment successful!');
+                        } else {
+                            alert('Payment failed: ' + data.message);
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
